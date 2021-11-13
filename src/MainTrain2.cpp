@@ -60,9 +60,9 @@ void checkCorrelationTrain(correlatedFeatures c,string f1, string f2, float a, f
 }
 
 int main(){
-	srand (time(NULL));
-	float a1=1+rand()%10, b1=-50+rand()%100;
-	float a2=1+rand()%20 , b2=-50+rand()%100;
+	//srand (time(NULL));
+	//float a1=1+rand()%10, b1=-50+rand()%100;
+	//float a2=1+rand()%20 , b2=-50+rand()%100;
 
 
 	// test the learned model: (40 points)
@@ -70,8 +70,10 @@ int main(){
 	//	A-C: y=a1*x+b1
 	//	B-D: y=a2*x+b2
 
-	generateTrainCSV(a1,b1,a2,b2);
-	TimeSeries ts("trainFile1.csv");
+	//generateTrainCSV(a1,b1,a2,b2);
+	TimeSeries ts("data.csv");
+    std::cout <<"asdasd";
+    /*
 	SimpleAnomalyDetector ad;
 	ad.learnNormal(ts);
 	vector<correlatedFeatures> cf=ad.getNormalModel();
@@ -108,4 +110,5 @@ int main(){
 
 	cout<<"done"<<endl;
 	return 0;
+     */
 }

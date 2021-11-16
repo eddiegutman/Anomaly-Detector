@@ -13,10 +13,16 @@ class TimeSeries{
     std::vector<std::string> features;
     std::vector<std::vector<float>> data;
 
-
 public:
 
 	TimeSeries(const char* CSVfileName);
+    std::vector<std::string> getAttributes() const;
+    std::vector<float> getVector(int index) const;
+    float* getArray(int index) const;
+    float getValue(const std::string& feature, int timestep) const;
+    unsigned long featureSize() const;
+    unsigned long dataSize() const;
+
 };
 
 

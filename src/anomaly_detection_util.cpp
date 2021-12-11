@@ -72,3 +72,4 @@ float dev(Point p,Line l){
 
 
 
+

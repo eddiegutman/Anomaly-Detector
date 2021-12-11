@@ -34,6 +34,7 @@ float findThreshold (Line ln, Point** p, int size) {
     return max * (float)1.1;
 }
 
+
 void SimpleAnomalyDetector::learnNormal(const TimeSeries& ts) {
     // traverse on each feature
     for (int i = 0; i < ts.featureSize(); i++) {
@@ -52,26 +53,31 @@ void SimpleAnomalyDetector::learnNormal(const TimeSeries& ts) {
             }
         }
 
-        // check if a correct pearson is found.
-        if (c != -1 && abs(max) >= 0.9) {
-
+        if (c != -1) {
             // create a correlated features pair
             int size = ts.dataSize();
             Point **points = createPointsArray(ts.getArray(i), ts.getArray(c), size);
-            Line ln = linear_reg(points, size);
-            float threshold = findThreshold(ln, points, size);
-            correlatedFeatures newCorrelation = {ts.getAttributes()[i], ts.getAttributes()[c], max,
-                                                 ln, threshold};
 
-            // add the correlated features pair to cf
-            this->cf.push_back(newCorrelation);
+            learnNormalHelper(ts, ts.getAttributes()[i], ts.getAttributes()[c], max, points, size);
 
             // free the point array
             releasePointsArray(points, size);
         }
     }
-
 }
+
+void SimpleAnomalyDetector::learnNormalHelper(const TimeSeries &ts, string& f1, string& f2,
+                                              float correlation, Point **points, int size) {
+    if (abs(correlation) >= 0.9) {
+        Line ln = linear_reg(points, size);
+        float threshold = findThreshold(ln, points, size);
+        correlatedFeatures newCorrelation = {f1, f2, correlation, ln,
+                                             Circle({0,0}, 0), threshold};
+        // add the correlated features pair to cf
+        this->cf.push_back(newCorrelation);
+    }
+}
+
 
 vector<AnomalyReport> SimpleAnomalyDetector::detect(const TimeSeries& ts) {
     std::vector<AnomalyReport> reports;
@@ -83,14 +89,19 @@ vector<AnomalyReport> SimpleAnomalyDetector::detect(const TimeSeries& ts) {
         // traverse on each correlated feature
         for (auto it = cf.begin(); it < cf.end(); it++) {
             Point p = {ts.getValue(it->feature1, i), ts.getValue(it->feature2, i)};
-
-            // check if there is an anomaly and add it
-            if (dev(p, it->lin_reg) > it->threshold) {
-                AnomalyReport report = AnomalyReport(it->feature1 + "-" + it->feature2, i+1);
-                reports.push_back(report);
-            }
+            detectHelper(reports, p, *it, i);
         }
     }
-
     return reports;
 }
+
+// check if there is an anomaly and add it
+void SimpleAnomalyDetector::detectHelper(std::vector<AnomalyReport>& reports, Point &p,
+                                         correlatedFeatures &correlatedFeatures, int time) {
+    if (abs(correlatedFeatures.corrlation) >= 0.9 && dev(p, correlatedFeatures.lin_reg) > correlatedFeatures.threshold) {
+        AnomalyReport report = AnomalyReport(correlatedFeatures.feature1 + "-" + correlatedFeatures.feature2,
+                                             time+1);
+        reports.push_back(report);
+    }
+}
+

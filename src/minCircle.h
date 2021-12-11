@@ -17,10 +17,11 @@ class Circle{
 public:
 	Point center;
 	float radius;
-	Circle(Point c,float r):center(c),radius(r){}
+	Circle(Point c, float r): center(c), radius(r){}
 };
 // --------------------------------------
 
+bool isInside(const Circle& c, const Point& p);
 Circle findMinCircle(Point** points,size_t size);
 
 // you can add here additional methods

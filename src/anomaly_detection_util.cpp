@@ -68,7 +68,3 @@ float dev(Point p,Point** points, int size){
 float dev(Point p,Line l){
     return std::abs(p.y - l.f(p.x));
 }
-
-
-
-

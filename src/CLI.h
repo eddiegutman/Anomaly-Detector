@@ -10,7 +10,8 @@ using namespace std;
 
 class CLI {
 	DefaultIO* dio;
-    Command *commands[5];
+    vector<Command*> menu;
+    SharedInfo* info;
 
 public:
 	CLI(DefaultIO* dio);

@@ -1,5 +1,3 @@
-
-
 #ifndef COMMANDS_H_
 #define COMMANDS_H_
 
@@ -39,8 +37,6 @@ class StandartIO: public DefaultIO {
     }
 
     void write(float f) override {
-      //  cout << fixed;
-      //  cout << setprecision(2);
         cout << f;
     }
 
@@ -52,20 +48,71 @@ class StandartIO: public DefaultIO {
 };
 
 // you may add here helper classes
+class SharedInfo {
+    HybridAnomalyDetector* ad;
+    TimeSeries* trainTS;
+    TimeSeries* testTS;
+    vector<AnomalyReport>* reports;
 
+public:
+    void setTrainTs(const char* path) {
+        trainTS = new TimeSeries(path);
+    }
+
+    void setTestTs(const char* path) {
+        testTS = new TimeSeries(path);
+    }
+
+    void setDetector() {
+        ad = new HybridAnomalyDetector();
+    }
+
+    float getThreshold() {
+        return ad->getThreshold();
+    }
+
+    void setThreshold(float f) {
+        ad->setThreshold(f);
+    }
+
+    void setReports() {
+        reports = new vector<AnomalyReport>();
+    }
+
+    vector<AnomalyReport> getReports() {
+        return *reports;
+    }
+
+    void learnNormal() {
+        ad->learnNormal(*trainTS);
+    }
+
+    void detect() {
+        *reports = ad->detect(*testTS);
+    }
+
+    unsigned long getTSsize() {
+        return testTS->dataSize();
+    }
+
+    ~SharedInfo() {
+        delete ad;
+        delete trainTS;
+        delete testTS;
+        delete reports;
+    }
+};
 
 // you may edit this class
 class Command{
     string description;
 protected:
 	DefaultIO* dio;
-    HybridAnomalyDetector* ad;
-    TimeSeries* trainTS;
-    TimeSeries* testTS;
-    vector<AnomalyReport>* reports;
+    SharedInfo* info;
+
 public:
-	Command(DefaultIO* dio, HybridAnomalyDetector* & had, string desc, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    dio(dio), ad(had), description(std::move(desc)), trainTS(t1), testTS(t2), reports(ar){
+	Command(DefaultIO* dio, SharedInfo* info, string desc):
+    dio(dio), info(info), description(std::move(desc)){
     }
     void print() {
         dio->write(description);
@@ -78,66 +125,10 @@ public:
 
 class CommandUploadTimeSeries: public Command {
 public:
-    CommandUploadTimeSeries(DefaultIO* dio, HybridAnomalyDetector* & had, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    Command(dio, had, "upload a time series csv file\n", t1, t2, ar) {};
+    CommandUploadTimeSeries(DefaultIO* dio, SharedInfo* info):
+    Command(dio, info, "upload a time series csv file\n") {};
 
     void execute() override {
-        /*
-        string path;
-        const char* c;
-
-        dio->write("Please upload your train CSV file.\n");
-        path = dio->read();
-        c = path.c_str();
-        TimeSeries train = TimeSeries(path.c_str());
-        *this->trainTS = train;
-        dio->write("Upload complete.\n");
-
-        dio->write("Please upload your test CSV file.\n");
-        path = dio->read();
-        c = path.c_str();
-        TimeSeries test = TimeSeries(path.c_str());
-        *this->testTS = test;
-        dio->write("Upload complete.\n");
-
-         */
-
-
-        /*
-        std::string line, cell;
-        bool init = true;
-
-        line = dio->read();
-
-        // iterate on each line
-        while (line != "done" && line != "Done" && line != "Done\n" && line != "done\n") {
-            // open each line as string stream
-            std::stringstream ss(line);
-
-            // first line is the features line
-            if (init) {
-
-                // split the line by ','
-                while(std::getline(ss,cell, ',')) {
-                    // add to the feature's vector
-                    features.push_back(cell);
-                    // create the floats vector
-                    std::vector<float> numbers;
-                    data.push_back(numbers);
-                }
-                init = false;
-                continue;
-            }
-
-            // add the data to the float vectors.
-            auto p = data.begin();
-            while(std::getline(ss,cell, ',')) {
-                p++->push_back(std::stof(cell));
-            }
-        }
-    }
-         */
-
         dio->write("Please upload your local train CSV file.\n");
 
         std::string line;
@@ -149,11 +140,8 @@ public:
             line = dio->read();
         }
         out.close();
-
-        TimeSeries train = TimeSeries("train.csv");
-        *this->trainTS = train;
+        info->setTrainTs("train.csv");
         dio->write("Upload complete.\n");
-
         dio->write("Please upload your local test CSV file.\n");
 
         out.open("test.csv");
@@ -163,24 +151,22 @@ public:
             line = dio->read();
         }
         out.close();
-
-        TimeSeries test = TimeSeries("test.csv");
-        *this->testTS = test;
+        info->setTestTs("test.csv");
         dio->write("Upload complete.\n");
-
+        info->setDetector();
     }
 };
 
 class CommandSettings: public Command {
 public:
-    CommandSettings(DefaultIO* dio, HybridAnomalyDetector* & had, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    Command(dio, had, "algorithm settings\n", t1, t2, ar) {};
+    CommandSettings(DefaultIO* dio, SharedInfo* info):
+    Command(dio, info, "algorithm settings\n") {};
 
     void execute() override {
         float num;
         dio->write("The current correlation threshold is ");
         //dio->write(*this->threshold);
-        dio->write(ad->getThreshold());
+        dio->write(info->getThreshold());
         dio->write("\n");
         dio->write("Type a new threshold\n");
 
@@ -189,27 +175,28 @@ public:
             dio->write("please choose a value between 0 and 1.\n");
             dio->read(&num);
         }
-        ad->setThreshold(num);
+        info->setThreshold(num);
     }
 };
 
 class CommandDetectAnomalies: public Command {
 public:
-    CommandDetectAnomalies(DefaultIO* dio, HybridAnomalyDetector* & had, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    Command(dio, had, "detect anomalies\n", t1, t2, ar) {};
+    CommandDetectAnomalies(DefaultIO* dio, SharedInfo* info):
+    Command(dio, info, "detect anomalies\n") {};
     void execute() override {
-        ad->learnNormal(*trainTS);
-        *this->reports = ad->detect(*testTS);
+        info->setReports();
+        info->learnNormal();
+        info->detect();
         dio->write("anomaly detection complete.\n");
     }
 };
 
 class CommandDisplayResults: public Command {
 public:
-    CommandDisplayResults(DefaultIO* dio, HybridAnomalyDetector* & had, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    Command(dio, had, "display results\n", t1, t2, ar) {};
+    CommandDisplayResults(DefaultIO* dio, SharedInfo* info):
+    Command(dio, info, "display results\n") {};
     void execute() override {
-        for (auto & report : *this->reports) {
+        for (auto & report : info->getReports()) {
             dio->write((float)report.timeStep);
             dio->write("\t");
             dio->write(report.description);
@@ -223,39 +210,10 @@ public:
 
 class CommandUploadAnomaliesAnalyzeResults: public Command {
 public:
-    CommandUploadAnomaliesAnalyzeResults(DefaultIO* dio, HybridAnomalyDetector* & had, TimeSeries* & t1, TimeSeries* & t2, vector<AnomalyReport>* & ar):
-    Command(dio,had,"upload anomalies and analyze results\n", t1, t2, ar) {};
+    CommandUploadAnomaliesAnalyzeResults(DefaultIO* dio, SharedInfo* info):
+    Command(dio, info,"upload anomalies and analyze results\n") {};
     void execute() override {
-        //vector<tuple<int, int>> anomalyFile;
         vector<pair<int, int>> anomalyFile;
-
-        /*
-        string path;
-        const char* c;
-
-        dio->write("Please upload your local anomalies file.\n");
-        path = dio->read();
-        c = path.c_str();
-
-        // open the file
-        std::ifstream file(c);
-        std::string line, cell1, cell2;
-
-        // iterate on each line
-        std::getline(file, line);
-        while (line != "done" && line != "Done" && line != "Done\n" && line != "done\n") {
-            // open each line as string stream
-            std::stringstream ss(line);
-
-            // add the data to the tuple vectors.
-            getline(ss,cell1, ',');
-            getline(ss,cell2, ',');
-            //tuple<int, int> t = {stoi(cell1), stoi(cell2)};
-            pair<int, int> t = make_pair(stoi(cell1), stoi(cell2));
-            anomalyFile.push_back(t);
-            std::getline(file, line);
-        }
-         */
 
         dio->write("Please upload your local anomalies file.\n");
         std::string line, cell1, cell2;
@@ -281,7 +239,7 @@ public:
         bool flag = true;
         string desc;
         long start, finish;
-        for (auto & r : *this->reports) {
+        for (auto & r : info->getReports()) {
 
             if (flag) {
                 start = r.timeStep;
@@ -303,7 +261,7 @@ public:
 
         unsigned long P, N, FP = 0, TP = 0;
         P = anomalyFile.size();
-        N = this->testTS->dataSize();
+        N = info->getTSsize();
         for (auto & t : anomalyFile) {
             N = N - (t.second - t.first + 1);
         }
@@ -343,6 +301,5 @@ public:
         dio->write("\n");
     }
 };
-
 
 #endif /* COMMANDS_H_ */

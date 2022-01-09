@@ -15,7 +15,6 @@ class TimeSeries{
 
 public:
 
-    TimeSeries() = default;
 	TimeSeries(const char* CSVfileName);
     std::vector<std::string> getAttributes() const;
     std::vector<float> getVector(int index) const;

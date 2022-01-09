@@ -1,7 +1,9 @@
 
 #include "SimpleAnomalyDetector.h"
 
-SimpleAnomalyDetector::SimpleAnomalyDetector() = default;
+SimpleAnomalyDetector::SimpleAnomalyDetector() {
+    threshold = 0.9;
+}
 
 SimpleAnomalyDetector::~SimpleAnomalyDetector() = default;
 
@@ -68,7 +70,7 @@ void SimpleAnomalyDetector::learnNormal(const TimeSeries& ts) {
 
 void SimpleAnomalyDetector::learnNormalHelper(const TimeSeries &ts, string& f1, string& f2,
                                               float correlation, Point **points, int size) {
-    if (abs(correlation) >= 0.9) {
+    if (abs(correlation) >= threshold) {
         Line ln = linear_reg(points, size);
         float threshold = findThreshold(ln, points, size);
         correlatedFeatures newCorrelation = {f1, f2, correlation, ln,
@@ -84,10 +86,10 @@ vector<AnomalyReport> SimpleAnomalyDetector::detect(const TimeSeries& ts) {
     int size = ts.dataSize();
 
     // traverse on each timestep line
-    for (int i = 0; i < size; i++) {
+    for (auto it = cf.begin(); it < cf.end(); it++) {
 
         // traverse on each correlated feature
-        for (auto it = cf.begin(); it < cf.end(); it++) {
+         for (int i = 0; i < size; i++) {
             Point p = {ts.getValue(it->feature1, i), ts.getValue(it->feature2, i)};
             detectHelper(reports, p, *it, i);
         }
@@ -98,7 +100,7 @@ vector<AnomalyReport> SimpleAnomalyDetector::detect(const TimeSeries& ts) {
 // check if there is an anomaly and add it
 void SimpleAnomalyDetector::detectHelper(std::vector<AnomalyReport>& reports, Point &p,
                                          correlatedFeatures &correlatedFeatures, int time) {
-    if (abs(correlatedFeatures.corrlation) >= 0.9 && dev(p, correlatedFeatures.lin_reg) > correlatedFeatures.threshold) {
+    if (abs(correlatedFeatures.corrlation) >= threshold && dev(p, correlatedFeatures.lin_reg) > correlatedFeatures.threshold) {
         AnomalyReport report = AnomalyReport(correlatedFeatures.feature1 + "-" + correlatedFeatures.feature2,
                                              time+1);
         reports.push_back(report);
